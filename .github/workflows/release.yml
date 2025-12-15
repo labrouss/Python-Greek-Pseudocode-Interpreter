@@ -4,83 +4,77 @@ name: Build and Release Executables
 on:
   push:
     tags:
-      - 'v*.*.*' # Trigger on tags that start with 'v' and follow semantic versioning
+      - 'v*.*.*'
 
 jobs:
-  # Job 1: Build the Linux Executable
-  build_linux:
-    name: Build Linux Executable
-    runs-on: ubuntu-latest
-
+  # 1. Consolidated Build Job for All Platforms (Linux, Windows, macOS)
+  build:
+    name: Build on ${{ matrix.os }}
+    runs-on: ${{ matrix.os }}
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [ubuntu-latest, windows-latest, macos-latest]
+        
+        # Define platform-specific variables for compilation and file naming
+        include:
+          - os: ubuntu-latest
+            asset_name_base: interpreter-linux
+            file_extension: '' # Linux executables have no extension
+          - os: windows-latest
+            asset_name_base: interpreter
+            file_extension: '.exe' # Windows executables use .exe
+          - os: macos-latest
+            asset_name_base: interpreter-macos
+            file_extension: '' # macOS executables (non-app bundle) have no extension
+            
     steps:
       - name: ⬇️ Checkout code
         uses: actions/checkout@v4
 
-      - name: 🐍 Set up Python (FIXED to 3.12)
+      - name: 🐍 Set up Python 3.12 (Fixed to use a stable version)
         uses: actions/setup-python@v5
         with:
           python-version: '3.12'
 
-      - name: 📦 Install PyInstaller (Removed placeholder dependencies)
+      - name: 📦 Install PyInstaller
         run: |
           python -m pip install --upgrade pip
           pip install pyinstaller
 
-      - name: 🔨 Compile to Linux executable (onefile mode)
+      - name: 🔨 Compile executable with custom name
+        # Use the --name flag to set the base name for the executable/bundle
         run: |
-          # The script is named interpreter.py
-          pyinstaller --onefile interpreter.py
+          pyinstaller --onefile --name ${{ matrix.asset_name_base }} interpreter.py
 
-      - name: 📤 Upload Linux executable artifact
+      - name: 📤 Upload executable artifact
         uses: actions/upload-artifact@v4
         with:
-          name: linux-executable
-          # PyInstaller uses the script name without .py for the executable name
-          path: dist/interpreter 
+          name: ${{ matrix.asset_name_base }}
+          # The path is constructed from the PyInstaller output folder 'dist'
+          # and the full file name, including the matrix-defined extension.
+          path: dist/${{ matrix.asset_name_base }}${{ matrix.file_extension }}
 
-  # Job 2: Build the Windows Executable
-  build_windows:
-    name: Build Windows Executable
-    runs-on: windows-latest
-
-    steps:
-      - name: ⬇️ Checkout code
-        uses: actions/checkout@v4
-
-      - name: 🐍 Set up Python (FIXED to 3.12)
-        uses: actions/setup-python@v5
-        with:
-          python-version: '3.12'
-
-      - name: 📦 Install PyInstaller (Removed placeholder dependencies)
-        run: |
-          python -m pip install --upgrade pip
-          pip install pyinstaller
-
-      - name: 🔨 Compile to Windows executable (onefile mode)
-        run: |
-          # The script is named interpreter.py
-          pyinstaller --onefile interpreter.py
-
-      - name: 📤 Upload Windows executable artifact
-        uses: actions/upload-artifact@v4
-        with:
-          name: windows-executable
-          # PyInstaller uses the script name with .exe extension
-          path: dist/interpreter.exe 
-# Job 3: Create the GitHub Release and attach assets
+  # 2. Create the GitHub Release and attach assets
   create_release:
     name: Create Release and Attach Assets
-    needs: [build_linux, build_windows]
+    # This job waits for all three OS builds to finish
+    needs: build
     runs-on: ubuntu-latest
     
-    # ADD THIS BLOCK: Grant write permission for releases/contents
+    # FIX: Grant write permission for releases/contents to fix the 403 error
     permissions: 
       contents: write 
 
     steps:
-      # ... (the rest of your steps remain the same)
+      - name: ⬇️ Checkout code (to get interpreter.py)
+        uses: actions/checkout@v4
+        
       - name: ⬇️ Download all artifacts
+        # Downloads artifacts into this folder structure:
+        # release_assets/interpreter-linux/interpreter-linux
+        # release_assets/interpreter/interpreter.exe
+        # release_assets/interpreter-macos/interpreter-macos
         uses: actions/download-artifact@v4
         with:
           path: release_assets 
@@ -90,19 +84,20 @@ jobs:
         run: echo "VERSION=${GITHUB_REF#refs/tags/}" >> $GITHUB_OUTPUT
 
       - name: 📝 Create GitHub Release
-        id: create_release
         uses: softprops/action-gh-release@v2
         with:
           tag_name: ${{ steps.get_version.outputs.VERSION }}
           name: Release ${{ steps.get_version.outputs.VERSION }}
           body: |
-            ## New Release
-            Automatic build of cross-platform executables.
+            ## New Cross-Platform Release
+            Automatic build of Linux, Windows, and macOS executables.
           draft: false
           prerelease: false
+          # Attach all three executables and the source file
           files: |
-            release_assets/linux-executable/interpreter 
-            release_assets/windows-executable/interpreter.exe
+            release_assets/interpreter-linux/interpreter-linux
+            release_assets/interpreter/interpreter.exe
+            release_assets/interpreter-macos/interpreter-macos
             interpreter.py
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
