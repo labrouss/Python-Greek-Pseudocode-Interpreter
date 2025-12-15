@@ -16,27 +16,27 @@ jobs:
       - name: ⬇️ Checkout code
         uses: actions/checkout@v4
 
-      - name: 🐍 Set up Python
+      - name: 🐍 Set up Python (FIXED to 3.12)
         uses: actions/setup-python@v5
         with:
-          python-version: '3.x'
+          python-version: '3.12'
 
-      - name: 📦 Install dependencies
+      - name: 📦 Install PyInstaller (Removed placeholder dependencies)
         run: |
           python -m pip install --upgrade pip
-          # Replace 'your-script-dependencies' with any actual packages your script needs
-          pip install pyinstaller your-script-dependencies
+          pip install pyinstaller
 
       - name: 🔨 Compile to Linux executable (onefile mode)
         run: |
-          # Replace 'your_script.py' with the actual name of your Python script
-          pyinstaller --onefile your_script.py
+          # The script is named interpreter.py
+          pyinstaller --onefile interpreter.py
 
       - name: 📤 Upload Linux executable artifact
         uses: actions/upload-artifact@v4
         with:
           name: linux-executable
-          path: dist/your_script # PyInstaller output file (no extension)
+          # PyInstaller uses the script name without .py for the executable name
+          path: dist/interpreter 
 
   # Job 2: Build the Windows Executable
   build_windows:
@@ -47,31 +47,31 @@ jobs:
       - name: ⬇️ Checkout code
         uses: actions/checkout@v4
 
-      - name: 🐍 Set up Python
+      - name: 🐍 Set up Python (FIXED to 3.12)
         uses: actions/setup-python@v5
         with:
-          python-version: '3.x'
+          python-version: '3.12'
 
-      - name: 📦 Install dependencies
+      - name: 📦 Install PyInstaller (Removed placeholder dependencies)
         run: |
           python -m pip install --upgrade pip
-          pip install pyinstaller your-script-dependencies
+          pip install pyinstaller
 
       - name: 🔨 Compile to Windows executable (onefile mode)
-        # Note: On Windows, PyInstaller output has an .exe extension
         run: |
-          pyinstaller --onefile your_script.py
+          # The script is named interpreter.py
+          pyinstaller --onefile interpreter.py
 
       - name: 📤 Upload Windows executable artifact
         uses: actions/upload-artifact@v4
         with:
           name: windows-executable
-          path: dist/your_script.exe # PyInstaller output file (.exe extension)
+          # PyInstaller uses the script name with .exe extension
+          path: dist/interpreter.exe 
 
   # Job 3: Create the GitHub Release and attach assets
   create_release:
-    name: Create Release and Attach Assets
-    # This job only runs after both build jobs have completed successfully
+    # ... (rest of the create_release job remains the same, but the paths need to match)
     needs: [build_linux, build_windows]
     runs-on: ubuntu-latest
 
@@ -79,10 +79,9 @@ jobs:
       - name: ⬇️ Download all artifacts
         uses: actions/download-artifact@v4
         with:
-          path: release_assets # Downloads artifacts into this folder structure
+          path: release_assets 
 
       - name: 🏷️ Get the version tag
-        # The tag is needed to name the release
         id: get_version
         run: echo "VERSION=${GITHUB_REF#refs/tags/}" >> $GITHUB_OUTPUT
 
@@ -97,9 +96,9 @@ jobs:
             Automatic build of cross-platform executables.
           draft: false
           prerelease: false
-          # Point to the executables downloaded in the first step
           files: |
-            release_assets/linux-executable/your_script
-            release_assets/windows-executable/your_script.exe
+            # FIX: Updated filenames to match the output 'interpreter'
+            release_assets/linux-executable/interpreter 
+            release_assets/windows-executable/interpreter.exe
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
