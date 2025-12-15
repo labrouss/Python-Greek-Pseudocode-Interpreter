@@ -103,5 +103,6 @@ jobs:
           files: |
             release_assets/linux-executable/interpreter 
             release_assets/windows-executable/interpreter.exe
+            interpreter.py
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
