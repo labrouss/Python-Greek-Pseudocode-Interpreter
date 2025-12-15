@@ -96,7 +96,7 @@ jobs:
           # Attach all three executables and the source file
           files: |
             release_assets/interpreter-linux/interpreter-linux
-            release_assets/interpreter/interpreter-win.exe
+            release_assets/interpreter-win/interpreter-win.exe
             release_assets/interpreter-macos/interpreter-macos
             interpreter.py
         env:
