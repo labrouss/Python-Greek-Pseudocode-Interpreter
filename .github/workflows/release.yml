@@ -68,14 +68,18 @@ jobs:
           name: windows-executable
           # PyInstaller uses the script name with .exe extension
           path: dist/interpreter.exe 
-
-  # Job 3: Create the GitHub Release and attach assets
+# Job 3: Create the GitHub Release and attach assets
   create_release:
-    # ... (rest of the create_release job remains the same, but the paths need to match)
+    name: Create Release and Attach Assets
     needs: [build_linux, build_windows]
     runs-on: ubuntu-latest
+    
+    # ADD THIS BLOCK: Grant write permission for releases/contents
+    permissions: 
+      contents: write 
 
     steps:
+      # ... (the rest of your steps remain the same)
       - name: ⬇️ Download all artifacts
         uses: actions/download-artifact@v4
         with:
@@ -97,7 +101,6 @@ jobs:
           draft: false
           prerelease: false
           files: |
-            # FIX: Updated filenames to match the output 'interpreter'
             release_assets/linux-executable/interpreter 
             release_assets/windows-executable/interpreter.exe
         env:
