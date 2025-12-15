@@ -1,0 +1,105 @@
+name: Build and Release Executables
+
+# This workflow runs whenever a new git tag (like v1.0.0) is pushed.
+on:
+  push:
+    tags:
+      - 'v*.*.*' # Trigger on tags that start with 'v' and follow semantic versioning
+
+jobs:
+  # Job 1: Build the Linux Executable
+  build_linux:
+    name: Build Linux Executable
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: ⬇️ Checkout code
+        uses: actions/checkout@v4
+
+      - name: 🐍 Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.x'
+
+      - name: 📦 Install dependencies
+        run: |
+          python -m pip install --upgrade pip
+          # Replace 'your-script-dependencies' with any actual packages your script needs
+          pip install pyinstaller your-script-dependencies
+
+      - name: 🔨 Compile to Linux executable (onefile mode)
+        run: |
+          # Replace 'your_script.py' with the actual name of your Python script
+          pyinstaller --onefile your_script.py
+
+      - name: 📤 Upload Linux executable artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: linux-executable
+          path: dist/your_script # PyInstaller output file (no extension)
+
+  # Job 2: Build the Windows Executable
+  build_windows:
+    name: Build Windows Executable
+    runs-on: windows-latest
+
+    steps:
+      - name: ⬇️ Checkout code
+        uses: actions/checkout@v4
+
+      - name: 🐍 Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.x'
+
+      - name: 📦 Install dependencies
+        run: |
+          python -m pip install --upgrade pip
+          pip install pyinstaller your-script-dependencies
+
+      - name: 🔨 Compile to Windows executable (onefile mode)
+        # Note: On Windows, PyInstaller output has an .exe extension
+        run: |
+          pyinstaller --onefile your_script.py
+
+      - name: 📤 Upload Windows executable artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: windows-executable
+          path: dist/your_script.exe # PyInstaller output file (.exe extension)
+
+  # Job 3: Create the GitHub Release and attach assets
+  create_release:
+    name: Create Release and Attach Assets
+    # This job only runs after both build jobs have completed successfully
+    needs: [build_linux, build_windows]
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: ⬇️ Download all artifacts
+        uses: actions/download-artifact@v4
+        with:
+          path: release_assets # Downloads artifacts into this folder structure
+
+      - name: 🏷️ Get the version tag
+        # The tag is needed to name the release
+        id: get_version
+        run: echo "VERSION=${GITHUB_REF#refs/tags/}" >> $GITHUB_OUTPUT
+
+      - name: 📝 Create GitHub Release
+        id: create_release
+        uses: softprops/action-gh-release@v2
+        with:
+          tag_name: ${{ steps.get_version.outputs.VERSION }}
+          name: Release ${{ steps.get_version.outputs.VERSION }}
+          body: |
+            ## New Release
+            Automatic build of cross-platform executables.
+          draft: false
+          prerelease: false
+          # Point to the executables downloaded in the first step
+          files: |
+            release_assets/linux-executable/your_script
+            release_assets/windows-executable/your_script.exe
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
