@@ -1294,7 +1294,7 @@ class Interpreter:
                     var_name = "variable"
                 
                 try:
-                    raw_input = input(f"Enter value for {var_name}: ")
+                    raw_input = input(f"")
                     
                     # 2. Ελέγχουμε αν η είσοδος είναι κενή/ελλιπής
                     if not raw_input.strip():
